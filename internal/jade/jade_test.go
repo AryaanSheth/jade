@@ -59,15 +59,9 @@ func TestTikTokPhotoModeAndVideo(t *testing.T){
 
 func TestTwitterMixedMedia(t *testing.T){
     s:=source(t,"https://x.com/creator/status/1234567890123456789")
-    data:=decode(t,`{"id_str":"1234567890123456789","user":{"screen_name":"creator"},"text":"A mixed post","mediaDetails":[{"type":"photo","media_url_https":"https://pbs.twimg.com/1.jpg"},{"type":"video","media_url_https":"https://pbs.twimg.com/2.jpg","video_info":{"variants":[{"content_type":"application/x-mpegURL","url":"https://video.twimg.com/a.m3u8","bitrate":99999},{"content_type":"video/mp4","url":"https://video.twimg.com/low.mp4","bitrate":100},{"content_type":"video/mp4","url":"https://video.twimg.com/high.mp4","bitrate":200}]}}]}`)
-    p,err:=parseTwitter(data,s);if err!=nil{t.Fatal(err)}
-    if len(p.Media)!=2||p.Media[0].Kind!="image"||p.Media[1].Kind!="video"||!strings.HasSuffix(p.Media[1].URL,"high.mp4"){t.Fatalf("wrong media order/format: %+v",p)}
-}
-
-func TestTwitterMixedMedia(t *testing.T){
-    s:=source(t,"https://x.com/creator/status/1234567890123456789")
     data:=decode(t,`{"id_str":"1234567890123456789","user":{"screen_name":"creator"},"text":"A mixed post","mediaDetails":[{"type":"photo","media_url_https":"https://pbs.twimg.com/1.jpg"},{"type":"video","media_url_https":"https://pbs.twimg.com/2.jpg","video_info":{"variants":[{"content_type":"application/x-mpegURL","url":"https://video.twimg.com/a.m3u8","bitrate":99999},{"content_type":"video/mp4","url":"https://video.twimg.com/low.mp4","bitrate":100},{"content_type":"video/mp4","url":"https://video.twimg.com/high.mp4","bitrate":200}]}},{"type":"photo","media_url_https":"https://pbs.twimg.com/3.jpg"}]}`)
-    post,err:=parseTwitter(data,s);if err!=nil||len(post.Media)!=3||!strings.Contains(post.Media[1].URL,"high.mp4"){t.Fatalf("mixed media: %+v %v",post,err)}
+    post,err:=parseTwitter(data,s);if err!=nil{t.Fatal(err)}
+    if len(post.Media)!=3||post.Media[0].Kind!="image"||post.Media[1].Kind!="video"||post.Media[2].Kind!="image"||!strings.HasSuffix(post.Media[1].URL,"high.mp4")||!strings.HasSuffix(post.Media[2].URL,"3.jpg"){t.Fatalf("wrong media order/format: %+v",post)}
 }
 
 func TestGalleryLimitsAndBoundaries(t *testing.T){

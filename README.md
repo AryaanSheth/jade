@@ -55,9 +55,9 @@ In production, set `JADE_SIGNING_SECRET` to a permanent random value of at least
 
 ## Free hosting: Vercel
 
-GitHub Pages only serves static files; it cannot fetch posts or generate per-post server-rendered embeds. Vercel's Go runtime can run the included HTTP handler. The project contains `api/index.go` and `vercel.json` for this deployment path.
+GitHub Pages only serves static files; it cannot fetch posts or generate per-post server-rendered embeds. Vercel's Go framework runs the root `main.go` server directly. `vercel.json` selects `"framework": "go"`; the Go builder supplies routing automatically. Do not add a `functions` entry for `api/index.go` or rewrite every request to that file: the Go framework ignores legacy Go API functions and that mapping causes an `unused_function` build error. The existing `api` adapter is retained for compatibility tests and is not the production entry point.
 
-1. Import this GitHub repository into a personal Vercel project. Choose **Other** for the framework; no frontend build command or static output directory is required.
+1. Import this GitHub repository into a personal Vercel project. Use the **Go** framework preset, as specified in `vercel.json`. Keep the repository root as the Root Directory and leave Build Command, Install Command and Output Directory overrides off. The Go framework compiles and runs `main.go` and uses its `PORT` listener.
 2. Set `JADE_SIGNING_SECRET` to a random secret of at least 32 characters.
 3. Set `JADE_PUBLIC_URL=https://YOUR-PROJECT.vercel.app` after your project hostname is assigned. If omitted, Jade uses Vercel's production hostname environment variable, falling back to the deployment hostname.
 4. Keep `JADE_MEDIA_MODE=redirect` for the free serverless setup. Redeploy after changing environment variables.
@@ -100,7 +100,7 @@ Tests cover public URL normalization, photo-only and mixed carousels, TikTok hyd
 ## References
 
 - [Discord component link previews](https://github.com/discord/discord-api-docs/blob/main/developers/link-previews/component-embeds.mdx)
-- [Vercel Go runtime](https://vercel.com/docs/functions/runtimes/go)
+- [Vercel Go backend support](https://vercel.com/changelog/zero-configuration-go-backend-support)
 - [Vercel function limits](https://vercel.com/docs/functions/limitations)
 - [Vercel Hobby plan](https://vercel.com/docs/plans/hobby)
 - [GitHub Pages limitations](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site)

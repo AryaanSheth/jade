@@ -64,10 +64,17 @@ func parseDocuments(b []byte,s Source)(Post,error){
     if json.Unmarshal(b,&v)==nil {documents=append(documents,v)}
     for _,match:=range scripts.FindAllSubmatch(b,256) {
         raw:=strings.TrimSpace(string(match[1]));if json.Unmarshal([]byte(raw),&v)==nil{documents=append(documents,v);continue}
+        documents=append(documents,embeddedJSONDocuments(raw,"\"contextJSON\":")...)
         if at:=strings.Index(raw,"=");at>=0 {raw=strings.TrimSuffix(strings.TrimSpace(raw[at+1:]),";");if json.Unmarshal([]byte(raw),&v)==nil{documents=append(documents,v)}}
     }
     for _,d:=range documents { var post Post;var err error;if s.Platform=="instagram" {post,err=parseInstagram(d,s)}else{post,err=parseTikTok(d,s)};if err==nil{return post,nil} }
     return Post{},fmt.Errorf("the platform did not expose this post's complete media; it may require login or block server requests")
+}
+
+// Instagram embeds store the post JSON inside an escaped contextJSON string.
+func embeddedJSONDocuments(raw,marker string)[]any{
+    documents:=[]any{}
+    for offset:=0;; {at:=strings.Index(raw[offset:],marker);if at<0{return documents};at+=offset+len(marker);decoder:=json.NewDecoder(strings.NewReader(raw[at:]));var encoded string;if decoder.Decode(&encoded)==nil{var document any;if json.Unmarshal([]byte(encoded),&document)==nil{documents=append(documents,document)}};offset=at}
 }
 
 // Walk metadata, never arbitrary linked pages. Limit depth to bound nested input.
@@ -105,6 +112,11 @@ func parseInstagram(data any,s Source)(Post,error){
 }
 
 func urlList(v any)string {m:=obj(v);for _,key:=range []string{"urlList","url_list","UrlList"}{for _,u:=range arr(m[key]){if text(u)!=""{return text(u)}}};return first(m["url"],v)}
+func tiktokVideoURL(video object)string{
+    best:="";bitrate:=-1
+    for _,item:=range arr(video["bitrateInfo"]){variant:=obj(item);if text(variant["CodecType"])!="h264"{continue};for _,candidate:=range arr(nested(variant,"PlayAddr","UrlList")){raw:=text(candidate);u,err:=url.Parse(raw);if err==nil&&u.Hostname()=="www.tiktok.com"&&u.Path=="/aweme/v1/play/"&&number(variant["Bitrate"])>bitrate{best=raw;bitrate=number(variant["Bitrate"])}}}
+    if best!=""{return best};raw:=urlList(video["playAddr"]);if raw==""{raw=urlList(video["downloadAddr"])};return raw
+}
 func parseTikTok(data any,s Source)(Post,error){
     node:=find(data,0,func(m object)bool{return first(m["id"],m["aweme_id"])==s.ID && (m["video"]!=nil||m["imagePost"]!=nil||m["image_post_info"]!=nil)})
     if node==nil{return Post{},fmt.Errorf("post metadata missing")}
@@ -113,7 +125,7 @@ func parseTikTok(data any,s Source)(Post,error){
     if len(images)>0 {
         for _,image:=range images {m:=obj(image);raw:=urlList(m["imageURL"]);if raw==""{raw=urlList(m["display_image"])};post.Media=append(post.Media,Media{Kind:"image",URL:raw,Width:number(m["imageWidth"]),Height:number(m["imageHeight"])})}
     }else{
-        v:=obj(node["video"]);raw:=urlList(v["playAddr"]);if raw==""{raw=urlList(v["downloadAddr"])}
+        v:=obj(node["video"]);raw:=tiktokVideoURL(v)
         post.Media=[]Media{{Kind:"video",URL:raw,Poster:urlList(v["cover"]),Width:number(v["width"]),Height:number(v["height"])}}
     }
     return validatePost(post)

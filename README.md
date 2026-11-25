@@ -68,7 +68,7 @@ Vercel deployment and live Discord rendering are not implied by a successful bui
 
 ### Media delivery and free-plan limits
 
-In `redirect` mode, signed stable asset links resolve the post and return a fresh redirect to the original platform CDN. Original media bytes do not flow through the Go function, avoiding large function response bodies and video bandwidth usage. CDN hotlink restrictions can still cause a specific image/video to fail. Redirect mode cannot add request headers to Discord's subsequent CDN request.
+In `redirect` mode, signed stable Instagram and X asset links resolve the post and return a fresh redirect to the original platform CDN. TikTok video assets are proxied because its first-party play endpoint requires a TikTok referrer that Discord cannot send. This means TikTok playback uses function bandwidth even in redirect mode. CDN restrictions can still cause a specific image/video to fail.
 
 For a persistent Go server, `JADE_MEDIA_MODE=proxy` streams media through Jade with GET/HEAD and byte-range support. It limits images to 8 MiB and videos to 50 MiB and restricts CDN destinations. Large media proxying on serverless hosts needs separate validation against that host's runtime limits; it is not the default Vercel path.
 

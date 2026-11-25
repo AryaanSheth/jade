@@ -131,10 +131,13 @@ func (a *App) asset(w http.ResponseWriter,r *http.Request){
     media:=post.Media[index];raw:=media.URL
     if match[3]=="poster.jpg"{raw=media.Poster}else if (match[3]=="mp4")!=(media.Kind=="video"){http.NotFound(w,r);return}
     if !mediaAllowed(raw,source.Platform){http.NotFound(w,r);return}
-    if a.cfg.MediaMode=="redirect"{w.Header().Set("Cache-Control","no-store");http.Redirect(w,r,raw,http.StatusTemporaryRedirect);return}
+    // TikTok's first-party play endpoint requires a TikTok Referer. Discord's
+    // media fetch cannot supply it, so TikTok assets must pass through Jade.
+    if a.cfg.MediaMode=="redirect"&&source.Platform!="tiktok"{w.Header().Set("Cache-Control","no-store");http.Redirect(w,r,raw,http.StatusTemporaryRedirect);return}
     client:=*a.client;client.CheckRedirect=func(req *http.Request,via []*http.Request)error{if len(via)>3||!mediaAllowed(req.URL.String(),source.Platform){return fmt.Errorf("blocked media redirect")};return nil}
     req,err:=http.NewRequestWithContext(r.Context(),r.Method,raw,nil);if err!=nil{http.Error(w,"Media unavailable",502);return}
     req.Header.Set("User-Agent","Mozilla/5.0");req.Header.Set("Accept-Encoding","identity")
+    if source.Platform=="tiktok"{req.Header.Set("Referer","https://www.tiktok.com/")}
     if value:=r.Header.Get("Range");value!=""{if !byteRange.MatchString(value)||len(value)>80{http.Error(w,"Invalid range",416);return};req.Header.Set("Range",value)}
     response,err:=client.Do(req);if err!=nil{http.Error(w,"Media host unavailable",502);return};defer response.Body.Close()
     if response.StatusCode!=200&&response.StatusCode!=206{http.Error(w,"Media host refused this request",502);return}

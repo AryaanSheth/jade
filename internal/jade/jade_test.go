@@ -49,12 +49,18 @@ func TestInstagramPhotoOnlyAndIncomplete(t *testing.T){
     if _,err=parseInstagram(data,s);err==nil{t.Fatal("accepted incomplete carousel")}
 }
 
+func TestInstagramEmbedContextJSON(t *testing.T){
+    s:=source(t,"https://instagram.com/reel/AbC123/");context:=`{"gql_data":{"shortcode_media":{"shortcode":"AbC123","is_video":true,"display_url":"https://scontent.cdninstagram.com/cover.jpg","video_url":"https://scontent.cdninstagram.com/video.mp4","owner":{"username":"creator"}}}}`;encoded,_:=json.Marshal(context)
+    post,err:=parseDocuments([]byte(`<script>boot({"contextJSON":`+string(encoded)+`})</script>`),s);if err!=nil||post.Author!="creator"||len(post.Media)!=1||post.Media[0].Kind!="video"{t.Fatalf("context JSON: %+v %v",post,err)}
+}
+
 func TestTikTokPhotoModeAndVideo(t *testing.T){
     s:=source(t,"https://tiktok.com/@creator/photo/1234567890123456789")
     data:=decode(t,`{"__DEFAULT_SCOPE__":{"webapp.video-detail":{"itemInfo":{"itemStruct":{"id":"1234567890123456789","author":{"uniqueId":"creator"},"desc":"Three slides","imagePost":{"images":[{"imageURL":{"urlList":["https://p16.tiktokcdn.com/1.jpeg"]}},{"imageURL":{"urlList":["https://p16.tiktokcdn.com/2.jpeg"]}},{"imageURL":{"urlList":["https://p16.tiktokcdn.com/3.jpeg"]}}]}}}}}}`)
     p,err:=parseTikTok(data,s);if err!=nil||len(p.Media)!=3||p.Media[2].Kind!="image"{t.Fatalf("photo mode: %+v %v",p,err)}
     node:=object{"id":s.ID,"author":object{"uniqueId":"creator"},"video":object{"playAddr":"https://v16.tiktokcdn.com/a.mp4","cover":"https://p16.tiktokcdn.com/cover.jpg"}}
     p,err=parseTikTok(node,s);if err!=nil||len(p.Media)!=1||p.Media[0].Kind!="video"{t.Fatalf("video: %+v %v",p,err)}
+    node["video"]=object{"playAddr":"https://v16.tiktokcdn.com/direct.mp4","bitrateInfo":[]any{object{"Bitrate":float64(100),"CodecType":"h264","PlayAddr":object{"UrlList":[]any{"https://v16.tiktokcdn.com/high.mp4","https://www.tiktok.com/aweme/v1/play/?item_id=123"}}}}};p,err=parseTikTok(node,s);if err!=nil||!strings.HasPrefix(p.Media[0].URL,"https://www.tiktok.com/aweme/v1/play/"){t.Fatalf("first-party play URL: %+v %v",p,err)}
 }
 
 func TestTwitterMixedMedia(t *testing.T){
@@ -108,4 +114,10 @@ func TestProviderHTTPAndEmbeddedJSON(t *testing.T){
     p:=Providers{Client:&http.Client{Transport:transportFunc(func(req *http.Request)(*http.Response,error){return &http.Response{StatusCode:200,Body:io.NopCloser(strings.NewReader(body)),Request:req,Header:make(http.Header)},nil})}}
     post,err:=p.Resolve(context.Background(),s);if err!=nil||len(post.Media)!=1{t.Fatalf("embedded JSON: %+v %v",post,err)}
     if _,_,err:=p.read(context.Background(),"http://169.254.169.254/",nil);err==nil{t.Fatal("metadata URL not blocked")}
+}
+
+func TestTikTokAssetsProxyWithRefererInRedirectMode(t *testing.T){
+    s:=source(t,"https://tiktok.com/@creator/video/1234567890123456789");post:=Post{Source:s,Media:[]Media{{Kind:"video",URL:"https://www.tiktok.com/aweme/v1/play/?item_id=1234567890123456789"}}};a:=application(resolverFunc(func(context.Context,Source)(Post,error){return post,nil}))
+    a.client=&http.Client{Transport:transportFunc(func(req *http.Request)(*http.Response,error){if req.Header.Get("Referer")!="https://www.tiktok.com/"{t.Fatalf("missing TikTok referer: %q",req.Header.Get("Referer"))};return &http.Response{StatusCode:206,Body:io.NopCloser(strings.NewReader("video")),Request:req,Header:http.Header{"Content-Type":{"video/mp4"},"Content-Length":{"5"}}},nil})}
+    u,_:=url.Parse(a.links(post)[0].URL);w:=get(a,u.RequestURI());if w.Code!=206||w.Body.String()!="video"{t.Fatalf("TikTok asset was not proxied: %d %q",w.Code,w.Body.String())}
 }

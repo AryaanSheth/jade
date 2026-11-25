@@ -1,1 +1,53 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#99d6b5"><title>Jade - Just A Discord Embedder</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head><body><main><a class="brand" href="/">Jade <span>Just A Discord Embedder</span></a><p class="eyebrow">MADE FOR THE GROUP CHAT</p><h1>The whole post.<br><em>Right in chat.</em></h1><p class="intro">Instagram carousels, TikTok photo posts, and X media.<br>Each slide gets its own place in your Discord preview.</p><form id="form"><label for="url">Paste a public post link</label><div class="input-row"><input id="url" type="text" inputmode="url" placeholder="https://www.instagram.com/p/..." maxlength="1800" autocomplete="off" required><button id="submit">Make a Jade link &rarr;</button></div></form><p id="status" role="status" aria-live="polite"></p><section id="result" hidden><label for="share">Share this in Discord</label><div class="input-row"><input id="share" readonly><button type="button" id="copy">Copy link</button></div><div class="actions"><a id="open" class="button secondary">Open post preview</a><button type="button" class="secondary" id="check">Check all slides</button></div><p id="count"></p><div id="pages" class="actions"></div><div id="media" class="gallery"></div></section><div class="info"><h2>One post, individual slides</h2><p>Images stay separate. Videos have their own play controls. You don't need to register or invite a Discord bot.</p><h2>Longer carousels</h2><p>Discord allows up to 10 media items in one link preview. Longer posts get additional share links. Every extracted item stays visible on the post's web page.</p><h2>Public posts only</h2><p>Platforms can block server requests or require login. If complete media is unavailable, Jade reports an error instead of pretending a cover image is the whole carousel.</p></div><footer>Jade &middot; Instagram / TikTok / X &middot; YouTube and Reddit are future extensions.</footer></main></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#101916">
+  <title>Jade · Share posts in Discord</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <main class="converter">
+    <a class="brand" href="/">Jade <span>Just A Discord Embedder</span></a>
+    <h1>Share posts in <em>Discord</em></h1>
+    <p class="intro">Turn a public Instagram, TikTok, or X post into a link with inline photos and videos.</p>
+
+    <div class="converter-tool">
+      <form id="form">
+        <label for="url">Original post link</label>
+        <div class="input-row">
+          <input id="url" type="text" inputmode="url" placeholder="https://www.instagram.com/p/…" maxlength="1800" autocomplete="off" spellcheck="false" aria-describedby="hint status" required>
+          <button id="submit">Get link</button>
+        </div>
+        <p id="hint" class="notice">Paste to generate a link, or type one and press Enter.</p>
+      </form>
+      <p id="status" role="status"></p>
+
+      <section id="result" hidden>
+        <label for="share">Discord link</label>
+        <div class="input-row">
+          <input id="share" readonly spellcheck="false">
+          <button type="button" id="copy">Copy link</button>
+        </div>
+        <p class="notice">Paste this link into a Discord channel or DM.</p>
+        <div class="actions">
+          <button type="button" class="secondary" id="check" aria-controls="preview" aria-expanded="false">Preview media</button>
+        </div>
+        <div id="preview" hidden>
+          <p id="preview-status" class="notice" role="status"></p>
+          <div id="pages" class="actions"></div>
+          <div id="media" class="gallery"></div>
+        </div>
+      </section>
+    </div>
+
+    <section class="converter-shortcut">
+      <h2>Already in Discord?</h2>
+      <p>Replace the leading <code>https://</code> with <code>https://aryaan.cloud/</code> and send the link. You can keep the rest, including tracking parameters.</p>
+      <code class="shortcut-example">https://aryaan.cloud/instagram.com/p/CeWY8kTr6fn/</code>
+    </section>
+  </main>
+</body>
+</html>

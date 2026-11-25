@@ -28,10 +28,35 @@ func galleryPage(post Post,links []Media,share string,page,size int)Gallery{
     current:=share;if page>1{current+="?page="+strconv.Itoa(page)}
     items:=[]any{}
     for i:=start;i<end;i++ {items=append(items,map[string]any{"media":map[string]string{"url":links[i].URL},"description":"Slide "+strconv.Itoa(i+1)})}
-    name:=post.Author;if name==""{name=strings.ToUpper(post.Source.Platform)}
-    name=strings.NewReplacer("<","","\n"," ").Replace(name)
-    components:=[]any{map[string]any{"type":10,"content":truncate(name,80)+"\nSlides "+strconv.Itoa(start+1)+"-"+strconv.Itoa(end)+" of "+strconv.Itoa(len(links))+"\n"+truncate(post.Caption,180)},map[string]any{"type":12,"items":items}}
-    buttons:=[]any{map[string]any{"type":2,"style":5,"label":"View all slides","url":share}}
+    platform := map[string]string{"instagram": "Instagram", "tiktok": "TikTok", "x": "X"}[post.Source.Platform]
+    if platform == "" {
+        platform = "Jade"
+    }
+    name := truncate(strings.Join(strings.Fields(post.Author), " "), 80)
+    heading := "**" + platform + "**"
+    if name != "" {
+        escape := strings.NewReplacer("\\", "\\\\", "*", "\\*", "_", "\\_", "~", "\\~", "`", "\\`", "|", "\\|", "<", "‹")
+        heading = "**" + escape.Replace(name) + "** · " + platform
+    }
+    if pages > 1 {
+        heading += fmt.Sprintf(" · Slides %d–%d of %d", start+1, end, len(links))
+    }
+    caption := strings.Join(strings.Fields(post.Caption), " ")
+    if caption != "" {
+        if shortened := truncate(caption, 179); shortened != caption {
+            caption = strings.TrimSpace(shortened) + "…"
+        }
+        heading += "\n" + caption
+    }
+    components := []any{
+        map[string]any{"type": 10, "content": heading},
+        map[string]any{"type": 12, "items": items},
+    }
+    label, destination := "Open original", post.Source.URL
+    if pages > 1 {
+        label, destination = "View full post", share
+    }
+    buttons := []any{map[string]any{"type": 2, "style": 5, "label": label, "url": destination}}
     if page>1{buttons=append(buttons,map[string]any{"type":2,"style":5,"label":"Previous set","url":share+"?page="+strconv.Itoa(page-1)})}
     if page<pages{buttons=append(buttons,map[string]any{"type":2,"style":5,"label":"Next set","url":share+"?page="+strconv.Itoa(page+1)})}
     components=append(components,map[string]any{"type":1,"components":buttons})

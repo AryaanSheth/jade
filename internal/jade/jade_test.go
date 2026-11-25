@@ -74,6 +74,11 @@ func TestGalleryLimitsAndBoundaries(t *testing.T){
     s:=source(t,"https://x.com/creator/status/1234567890123456789");a:=application(nil);post:=fixture(s,23);links:=a.links(post)
     first,err:=a.gallery(post,links,a.cfg.PublicURL+s.SharePath(),1);if err!=nil{t.Fatal(err)}
     if first.End!=10||first.Pages!=3{t.Fatal(first)}
+    content, err := json.Marshal(first.Payload)
+    if err != nil || !strings.Contains(string(content), "Slides 1–10 of 23") ||
+        !strings.Contains(string(content), "View full post") || !strings.Contains(string(content), "Next set") {
+        t.Fatalf("missing gallery paging controls: %s (%v)", content, err)
+    }
     previous:=0
     for page:=1;page<=first.Pages;page++{g,err:=a.gallery(post,links,a.cfg.PublicURL+s.SharePath(),page);if err!=nil{t.Fatal(err)};if g.Start!=previous+1||g.End-g.Start>=10{t.Fatal("bad boundary",g)};previous=g.End;b,_:=json.Marshal(g.Payload);if len(b)>3000{t.Fatal("oversized component JSON")}}
     if previous!=23{t.Fatal("lost slides",previous)}
@@ -86,6 +91,10 @@ func TestHTTPEmbedsAndAssets(t *testing.T){
     w:=get(a,"/api/link?url="+url.QueryEscape(s.URL));if w.Code!=200||calls.Load()!=0{t.Fatal(w.Code,w.Body.String())}
     w=get(a,s.SharePath());if w.Code!=200{t.Fatal(w.Code,w.Body.String())};body:=w.Body.String();match:=componentPattern.FindStringSubmatch(body)
     if len(match)!=2||strings.Contains(body,"<img src=x onerror=alert(1)>"){t.Fatal("missing component payload or unsafe HTML")};var payload any;if json.Unmarshal([]byte(match[1]),&payload)!=nil{t.Fatal("invalid embedded JSON",match[1])}
+    if !strings.Contains(match[1], "**Creator** · X") || !strings.Contains(match[1], "Open original") ||
+        strings.Contains(match[1], "Slides 1") || strings.Contains(match[1], "Next set") {
+        t.Fatal("unexpected single-page card", match[1])
+    }
     for i,link:=range a.links(fixture(s,3)){u,_:=url.Parse(link.URL);response:=get(a,u.RequestURI());if response.Code!=307||!strings.Contains(response.Header().Get("Location"),fmt.Sprintf("/%d.jpg",i)){t.Fatal("wrong asset",response.Code)}}
     if calls.Load()!=1{t.Fatal("metadata not cached")}
     if w=get(a,"/a/forged.token/0.jpg");w.Code!=403{t.Fatal(w.Code)}

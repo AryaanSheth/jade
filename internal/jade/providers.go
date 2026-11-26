@@ -52,7 +52,16 @@ func (p *Providers) Resolve(ctx context.Context,s Source)(Post,error){
             b,_,err:=p.read(ctx,"https://www.instagram.com/graphql/query/",url.Values{"doc_id":{p.InstagramDocID},"variables":{string(vars)}})
             if err==nil {var data any;if json.Unmarshal(b,&data)==nil {if post,e:=parseInstagram(data,s);e==nil{return post,nil}}}
         }
-        b,_,err:=p.read(ctx,s.URL+"embed/captioned/",nil);if err!=nil{return Post{},err};return parseDocuments(b,s)
+        metadataURL := s.URL + "embed/captioned/"
+        // The public reel page can expose playback metadata absent from the captioned embed.
+        if strings.HasPrefix(s.Path, "/reel/") {
+            metadataURL = s.URL
+        }
+        b, _, err := p.read(ctx, metadataURL, nil)
+        if err != nil {
+            return Post{}, err
+        }
+        return parseDocuments(b, s)
     }
     b,_,err:=p.read(ctx,s.URL,nil);if err!=nil{return Post{},err};return parseDocuments(b,s)
 }
@@ -90,7 +99,9 @@ func parseInstagram(data any,s Source)(Post,error){
         return code==s.ID && (m["display_url"]!=nil||m["image_versions2"]!=nil||m["carousel_media"]!=nil||m["edge_sidecar_to_children"]!=nil)
     })
     if node==nil{return Post{},fmt.Errorf("post metadata missing")}
-    if owner:=obj(node["owner"]);owner["is_private"]==true{return Post{},fmt.Errorf("private post")}
+    if nested(node, "owner", "is_private") == true || nested(node, "user", "is_private") == true {
+        return Post{}, fmt.Errorf("private post")
+    }
     post:=Post{Source:s,Author:first(nested(node,"owner","username"),nested(node,"user","username"))}
     post.Caption=first(nested(node,"caption","text"),node["caption"])
     if edges:=arr(nested(node,"edge_media_to_caption","edges"));len(edges)>0{post.Caption=first(nested(obj(edges[0]),"node","text"),post.Caption)}
